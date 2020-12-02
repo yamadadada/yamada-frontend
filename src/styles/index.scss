@@ -1,0 +1,35 @@
+@import "material-dashboard/mixins";
+@import "material-dashboard/variables";
+@import "biliob/dark-info";
+// @import "material-dashboard/typography";
+// @import "material-dashboard/sidebar";
+// @import "material-dashboard/misc";
+// @import "material-dashboard/inputs";
+// @import "material-dashboard/footer";
+// @import "material-dashboard/cards";
+// @import "material-dashboard/tables";
+// @import "material-dashboard/tabs";
+// @import "material-dashboard/checkboxes";
+// @import "material-dashboard/tooltips";
+// @import "material-dashboard/buttons";
+// @import "material-dashboard/alerts";
+// @import "material-dashboard/fixed-plugin";
+// @import "material-dashboard/dropdown";
+.v-slide-group__prev {
+  display: none !important;
+}
+
+.v-application p {
+  margin-bottom: auto;
+}
+
+.bscroll-horizontal-scrollbar {
+  z-index: 2 !important;
+}
+.bscroll-vertical-scrollbar {
+  z-index: 2 !important;
+}
+
+.container {
+  padding: 0px !important;
+}

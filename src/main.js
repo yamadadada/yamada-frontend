@@ -1,0 +1,201 @@
+import "babel-polyfill";
+// import "@fortawesome/fontawesome-free/css/all.css";
+import "@mdi/font/css/materialdesignicons.css"; // Ensure you are using css-loader
+import Vue from "vue";
+import "./echarts";
+import addEvent from "./util/add-event";
+const App = () => import("./App.vue");
+import router from "./router";
+import store from "./store";
+import "./registerServiceWorker";
+import axios from "axios";
+import VueAxios from "vue-axios";
+import VueRouter from "vue-router";
+import Vuex from "vuex";
+import data from "./data";
+import "./components";
+import EmojiPicker from "vue-emoji-picker";
+Vue.config.productionTip = false;
+
+// 使用vue-cookies
+import VueCookies from "vue-cookies";
+
+import vuetify from "./plugins/vuetify";
+Vue.use(VueCookies);
+
+import Meta from "vue-meta";
+Vue.use(Meta);
+
+router.afterEach(function(to) {
+  let baseTitle =
+    " - BiliOB观测者 - B站历史数据统计分析站点 - 哔哩哔哩数据查询";
+  if (to.name == undefined) {
+    to.name = "404";
+  }
+  window.document.title = to.name + baseTitle;
+  function saveToLocal(key) {
+    let count = window.localStorage.getItem(key);
+    if (count == undefined) {
+      count = 0;
+    }
+    window.localStorage.setItem(key, Number(count) + 1);
+  }
+  function addVideo(aid) {
+    let key = `aid:${aid}`;
+    saveToLocal(key);
+  }
+  function addAuthor(mid) {
+    let key = `mid:${mid}`;
+    saveToLocal(key);
+  }
+  var videoPatt = /\/author\/[0-9]*\/video\/[0-9]*/;
+  var authorPatt = /\/author\/[0-9]*/;
+  if (to.path.match(videoPatt)) {
+    let list = to.path.split("/");
+    addVideo(list[4]);
+    addAuthor(list[2]);
+  } else if (to.path.match(authorPatt)) {
+    let list = to.path.split("/");
+    addAuthor(list[2]);
+  }
+});
+Vue.use(EmojiPicker);
+Vue.use(VueRouter);
+Vue.prototype.$addEvent = addEvent;
+Vue.prototype.$baseKeywords =
+  "B站,b站数据统计,b站数据分析,bilibili排行榜,哔哩哔哩up主,up主排行,数据,观测者,视频,见齐,biliob,bilibili,UP主,粉丝数,粉丝数排行榜,数据可视化,哔哩哔哩,哔哩哔哩观测者,哔哩哔哩ob,bilibiliob";
+// 使用axios
+axios.defaults.withCredentials = true;
+
+Vue.prototype.$alert = (res) => {
+  if (res == undefined) return;
+  let msg = res.data.msg;
+  if (res.status == 403) {
+    data.alert.message = "拒绝访问";
+    data.alert.display = true;
+  }
+  if (msg != undefined) {
+    data.alert.message = res.data.msg;
+    if (res.data.user != undefined) {
+      Vue.prototype.$db.user.credit = res.data.user.credit;
+      Vue.prototype.$db.user.exp = res.data.user.exp;
+      msg = `${res.data.msg}！剩余积分：${res.data.user.credit} 当前经验：${res.data.user.exp}`;
+    } else if (res.data.data != undefined) {
+      if (res.data.data.credit != undefined) {
+        Vue.prototype.$db.user.credit = res.data.user.credit;
+        Vue.prototype.$db.user.exp = res.data.user.exp;
+        msg = `${res.data.msg}！剩余积分：${Vue.prototype.$db.user.credit} 当前经验：${Vue.prototype.$db.user.exp}`;
+      }
+    } else {
+      if (res.status == 200) {
+        return;
+      }
+    }
+    if (res.data.code > 0 || res.data.code == undefined) {
+      data.alert.type = "success";
+    } else {
+      data.alert.type = "error";
+    }
+    data.alert.message = msg;
+    data.alert.display = true;
+  }
+};
+
+import { format } from "date-fns";
+Vue.prototype.$timeFormat = format;
+
+Vue.prototype.$db = data;
+Vue.prototype.$keywordFilter = (txt) => {
+  return txt.replace(/赌|赌博|博彩/g, "预测");
+};
+Vue.prototype.$dateParse = require("date-fns/parse");
+Vue.prototype.$numberFormat = function(num, sim = true, fix = 0) {
+  if (num == undefined) {
+    return "-";
+  }
+  let postfix = "";
+  if (sim) {
+    if (Math.abs(num) > 100000000) {
+      postfix = "亿";
+      num /= 100000000;
+    } else if (Math.abs(num) > 10000) {
+      postfix = "万";
+      num /= 10000;
+    }
+  }
+  if (sim == true && postfix != "") {
+    fix = 2;
+  }
+  num = num.toFixed(fix);
+  var parts = num.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return parts.join(".") + postfix;
+};
+
+Vue.prototype.$numFormat = (n) => {
+  return new Intl.NumberFormat("zh-cn").format(n);
+};
+
+axios.interceptors.request.use(
+  (config) => {
+    return config;
+  },
+  (error) => {
+    return Promise.error(error);
+  }
+);
+
+axios.interceptors.response.use(
+  function(response) {
+    // let path = router.app.$route.path;
+    // if (response.config.method != "get") {
+    Vue.prototype.$alert(response);
+    // }
+    return response;
+  },
+  function(error) {
+    Vue.prototype.$alert(error.response);
+    return Promise.reject(error);
+  }
+);
+
+// 环境的切换
+if (process.env.NODE_ENV == "development ") {
+  axios.defaults.baseURL = "//localhost:8081/api";
+} else {
+  axios.defaults.baseURL = "https://api.biliob.com/";
+}
+axios.interceptors.request.use(req => { 
+  req.headers = {
+    "Content-Type": "application/json",
+  };
+  if (localStorage.getItem("token") != null) {
+    req.headers["token"] = `${localStorage.getItem("token")}`
+  }
+  return req;
+})
+
+Vue.use(VueAxios, axios);
+Vue.use(Vuex);
+new Vue({
+  router,
+  store,
+  vuetify,
+  render: (h) => h(App),
+}).$mount("#app");
+
+// refresh index.html
+caches.open("biliob-precache-https://www.biliob.com/").then((c) => {
+  c.keys().then((k) => {
+    k.forEach((e) => {
+      if (e.url === "https://www.biliob.com/index.html") {
+        c.delete(e).then(() => {
+          console.log("index.html缓存清除成功");
+        });
+      }
+    });
+  });
+});
+Vue.use(VueMarkdown, "VueMarkdown");
+
+window.$db = data;
